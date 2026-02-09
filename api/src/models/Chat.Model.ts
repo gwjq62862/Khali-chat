@@ -10,7 +10,14 @@ export interface Chat extends Document {
     updatedAt: Date;
 }
 const ChatSchema = new mongoose.Schema<Chat>({
-    participants: [{ type: mongoose.Schema.Types.ObjectId, ref: "User", required: true }],
+      participants: {
+        type: [{ type: mongoose.Schema.Types.ObjectId, ref: "User" }],
+        required: true,
+        validate: {
+            validator: (v: mongoose.Types.ObjectId[]) => v.length >= 2,
+            message: 'A chat must have at least 2 participants'
+        }
+    },
     lastMessage: { type: mongoose.Schema.Types.ObjectId, ref: "Message", default: null },
     lastMessageAt: { type: Date, default: Date.now }
 }, { timestamps: true })
