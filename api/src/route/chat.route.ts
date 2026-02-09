@@ -8,5 +8,7 @@ route.use(protectRoute)
 route.get('/',getChats)
 route.post('/with/:participantId',getOrCreateChat)
 
+
+
 export default route;
 
