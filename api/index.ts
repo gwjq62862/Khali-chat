@@ -6,10 +6,11 @@ import { initializeSocket } from "./src/utils/socket";
 const httpServer=createServer(app)
 
 
-initializeSocket(httpServer)
+
 
 const startServer = async () => {
     await connectToDatabase();
+    initializeSocket(httpServer)
    httpServer.listen(PORT, () => {
         console.log(`Server is running on port ${PORT}`);
     });

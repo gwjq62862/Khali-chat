@@ -53,72 +53,96 @@ export const initializeSocket = (httpServer: HttpServer) => {
         }
     });
 
-  
 
-io.on("connection", (socket) => {
-    const userId = (socket as SocketWithUserId).userId;
 
-    socket.emit("online-users", { userIds: Array.from(onlineUsers.keys()) });
-    onlineUsers.set(userId, socket.id);
-    socket.broadcast.emit("user-online", { userId });
+    io.on("connection", (socket) => {
+        const userId = (socket as SocketWithUserId).userId;
 
-    socket.join(`user:${userId}`);
-    
-    socket.on('join-chat', (chatid: string) => {
-        socket.join(`chat:${chatid}`);
-    });
-    
-    socket.on('leave-chat', (chatid: string) => {
-        socket.leave(`chat:${chatid}`);
-    });
+        socket.emit("online-users", { userIds: Array.from(onlineUsers.keys()) });
+        onlineUsers.set(userId, socket.id);
+        socket.broadcast.emit("user-online", { userId });
 
- 
-    socket.on("send-message", async (data: { chatId: string, text: string }) => {
-        const { chatId, text } = data;
-        try {
-            const chat = await Chat.findOne({
-                _id: chatId,
-                participants: userId
-            });
+        socket.join(`user:${userId}`);
 
-            if (!chat) {
-                return socket.emit("error", { message: "You are not a participant." });
+
+        socket.on('join-chat', async (chatId: string) => {
+            try {
+                const chat = await Chat.findOne({
+                    _id: chatId,
+                    participants: userId
+                });
+                if (!chat) {
+                    return socket.emit("error", { message: "You are not a participant." });
+                }
+                socket.join(`chat:${chatId}`);
+            } catch (error) {
+                socket.emit("error", { message: "Failed to join chat." });
             }
+        });
 
-            const message = await Message.create({
-                chat: chatId,
-                sender: userId,
-                text
-            });
+        socket.on('leave-chat', (chatid: string) => {
+            socket.leave(`chat:${chatid}`);
+        });
 
-            chat.lastMessage = message._id;
-            chat.lastMessageAt = new Date();
-            await chat.save();
 
-            await message.populate("sender", "name email avatar");
+        socket.on("send-message", async (data: { chatId: string, text: string }) => {
+            const { chatId, text } = data;
+            try {
+                const chat = await Chat.findOne({
+                    _id: chatId,
+                    participants: userId
+                });
 
-      
-            io.to(`chat:${chatId}`).emit("new-message", message);
+                if (!chat) {
+                    return socket.emit("error", { message: "You are not a participant." });
+                }
 
-          
-            for (const participantId of chat.participants) {
-                io.to(`user:${participantId}`).emit('new-message', message);
+                const message = await Message.create({
+                    chat: chatId,
+                    sender: userId,
+                    text
+                });
+
+                chat.lastMessage = message._id;
+                chat.lastMessageAt = new Date();
+                await chat.save();
+
+                await message.populate("sender", "name email avatar");
+
+
+             
+                io.to(`chat:${chatId}`).emit("new-message", message);
+
+
+                for (const participantId of chat.participants) {
+
+                    if (participantId.toString() === userId) continue;
+
+                    io.to(`user:${participantId}`).emit('message-notification', {
+                        chatId,
+                        message: {
+                            _id: message._id,
+                            text: message.text,
+                            sender: message.sender,
+                            createdAt: message.createdAt
+                        }
+                    });
+                }
+            } catch (error) {
+                socket.emit("error", { message: "Failed to send message." });
             }
-        } catch (error) {
-            socket.emit("error", { message: "Failed to send message." });
-        }
+        });
+
+        //TODO: Implement typing indicator
+        socket.on('typing', (data: { chatId: string }) => {
+
+        })
+        socket.on("disconnect", () => {
+            onlineUsers.delete(userId);
+            socket.broadcast.emit("user-offline", { userId });
+        });
+
+
     });
-
-     //TODO: Implement typing indicator
-    socket.on('typing',(data:{chatId:string})=>{
-
-    })
-    socket.on("disconnect", () => {
-        onlineUsers.delete(userId);
-        socket.broadcast.emit("user-offline", { userId });
-    });
-
-   
-}); 
-return io;
+    return io;
 }
