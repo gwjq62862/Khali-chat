@@ -19,7 +19,7 @@ RUN bun run build
 WORKDIR /app/backend
 COPY backend/package.json backend/bun.lock* ./
 RUN bun install --frozen-lockfile
-COPY backend/ ./
+COPY api/ ./
 
 # expose port
 EXPOSE 3000
