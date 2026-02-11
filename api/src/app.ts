@@ -5,6 +5,7 @@ import UserRoute from './route/user.route'
 import MessageRoute from './route/message.route'
 import { clerkMiddleware } from '@clerk/express'
 import { errorHandler } from './middleware/errorHandler.middleware'
+import path from 'path'
 
 const app = express()
 
@@ -22,4 +23,12 @@ app.use("/api/user", UserRoute)
 app.use("/api/chat", ChatRoute)
 
 app.use(errorHandler)
+
+//serve frontend 
+if(process.env.NODE_ENV==="production"){
+    app.use(express.static(path.join(__dirname,"../../web/dist")))
+    app.get("/{*any}",(req,res)=>{
+        res.sendFile(path.join(__dirname,"../../web/dist/index.html"))
+    })
+}
 export {app,PORT}
