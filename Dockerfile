@@ -16,8 +16,8 @@ ENV VITE_API_URL=$VITE_API_URL
 RUN bun run build
 
 # install backend dependencies
-WORKDIR /app/backend
-COPY backend/package.json backend/bun.lock* ./
+WORKDIR /app/api
+COPY api/package.json api/bun.lock* ./
 RUN bun install --frozen-lockfile
 COPY api/ ./
 
